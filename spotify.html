@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Generated Spotify Playlist</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <img src="spot.png" alt="Spotify Logo" class="spotify-logo">
+            <h1>AI Generated Spotify Playlist</h1>
+        </header>
+        <main>
+            <div class="input-section">
+                <label for="theme">Playlist Theme</label>
+                <input type="text" id="theme" placeholder="Enter the playlist theme">
+                <label for="num-songs">Number of Songs</label>
+                <input type="number" id="num-songs" placeholder="Enter the number of songs">
+                <button id="submit-btn">Generate Playlist</button>
+            </div>
+            <div id="spotify-embed" class="spotify-embed"></div>
+        </main>
+        <footer>
+            <p>&copy; 2024 Ishaan Time Waste Service</p>
+        </footer>
+    </div>
+    <script src="spotify_js.js"></script>
+</body>
+</html>
