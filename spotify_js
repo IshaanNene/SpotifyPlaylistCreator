@@ -1,0 +1,149 @@
+const token = 'YOUR SPOTIFY DEVELOP API KEY'
+const apiKey = 'YOUR OPENAPI KEY';
+const url = "https://api.openai.com/v1/completions";
+const outputContainer = document.getElementById('ad-output');
+const outputImg = document.getElementById('output-img');
+const urls = 'https://api.openai.com/v1/images/generations';
+
+document.getElementById('submit-btn').addEventListener("click", () => {
+  const theme = document.getElementById("theme").value;
+  const numOfSongs = document.getElementById("num-songs").value;
+  fetchBotReply(theme, numOfSongs);
+});
+
+async function fetchBotReply(theme, numOfSongs) {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          'model': 'gpt-3.5-turbo-instruct',
+          'prompt': `Use the given theme and genre of music to create a playlist with the given number of songs. Respond in a JSON format.
+  
+          ###
+  
+          theme : A pop music playlist perfect for a drive with friends, featuring upbeat and feel-good tracks that make everyone want to sing along.
+          number of songs: 6
+  
+          response : {
+            "name" : "Wanna go for a drive?",
+            "image" : "An aerial shot of a winding coastal highway at sunset, with a car driving along the road. The sky is a mix of orange, pink, and purple hues, reflecting on the ocean waves. The overall vibe is adventurous and free-spirited, perfectly capturing the essence of a fun drive with friends.",
+            "songs_list" : {
+                "1":"Violet by Conner Price (ft. Killa)",
+                "2":"OMG by Camila Cabello (ft. Quavo)",
+                "3":"Demons by Imagine Dragons",
+                "4":"Insane by Black GryphOn (ft. Baasik)",
+                "5":"No Tomorrow by Ty Frankel (ft. Stephane Lo Jacomo, Myariah Summers)",
+                "6":"JADED by Fordo"          
+              }
+          }    
+  
+          ###
+  
+          theme: ${theme}
+          number of songs: ${numOfSongs}
+  
+          response: `,
+          'max_tokens': 300 
+        })
+      });
+  
+      const data = await response.json();
+      console.log('OpenAI Response:', data);
+      const botReply = data.choices[0].text.trim();
+      console.log('Bot Reply:', botReply);
+  
+      let botReplyJSON;
+      try {
+        botReplyJSON = JSON.parse(botReply);
+      } catch (jsonError) {
+        console.error('JSON Parse Error:', jsonError);
+        console.log('Bot Reply (raw):', botReply);
+        return;
+      }
+  
+      const img_desc = botReplyJSON["image"] ? botReplyJSON["image"].split(".")[0] : "";
+      const album_name = botReplyJSON["name"];
+      const songsObject = botReplyJSON["songs_list"];
+      const songNames = Object.values(songsObject);
+      
+      await createSpotifyPlaylist(album_name, theme, songNames);
+      
+    } catch (error) {
+      console.error('Fetch Error:', error);
+    }
+  }
+  
+async function fetchWebApi(endpoint, method, body = null) {
+    try {
+      const res = await fetch(`https://api.spotify.com/${endpoint}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        method,
+        body: body ? JSON.stringify(body) : null
+      });
+  
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+  
+      return await res.json();
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  }
+  
+async function getTracksByNames(names) {
+    const tracks = [];
+    for (const name of names) {
+      const data = await fetchWebApi(`v1/search?q=${encodeURIComponent(name)}&type=track&limit=1`, 'GET');
+      if (data && data.tracks && data.tracks.items.length > 0) {
+        tracks.push(data.tracks.items[0]);
+      }
+    }
+    return tracks;
+  }
+  
+async function createPlaylist(tracksUri, album_name, theme) {
+    const user = await fetchWebApi('v1/me', 'GET');
+    const user_id = user.id;
+  
+    const playlist = await fetchWebApi(
+      `v1/users/${user_id}/playlists`, 'POST', {
+        "name": album_name,
+        "description": theme,
+        "public": false
+    });
+  
+    await fetchWebApi(
+      `v1/playlists/${playlist.id}/tracks`, 'POST', {
+        uris: tracksUri
+      }
+    );
+  
+    return playlist;
+  }
+  
+async function createSpotifyPlaylist(album_name, theme, songNames) {
+    const tracks = await getTracksByNames(songNames);
+    const trackUris = tracks.map(track => `spotify:track:${track.id}`);
+    const createdPlaylist = await createPlaylist(trackUris, album_name, theme);
+  
+    const playlistId = createdPlaylist.id;
+    const iframe = document.createElement('iframe');
+    iframe.title = "Spotify Embed: Custom Theme Playlist";
+    iframe.src = `https://open.spotify.com/embed/playlist/${playlistId}?utm_source=generator&theme=0`;
+    iframe.width = "100%";
+    iframe.height = "100%";
+    iframe.style.minHeight = '360px';
+    iframe.frameBorder = "0";
+    iframe.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
+    iframe.loading = "lazy";
+  
+    document.getElementById('spotify-embed').appendChild(iframe);
+}
